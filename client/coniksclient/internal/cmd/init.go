@@ -44,6 +44,11 @@ func mkConfigOrExit(dir string) {
 		SignPubkeyPath: "../../keyserver/coniksserver/sign.pub",
 		RegAddress:     "tcp://127.0.0.1:3000",
 		Address:        "tcp://127.0.0.1:3000",
+		ServerAddress: &client.ServerAddress{
+			Address:     "localhost:3001",
+			TLSCertPath: "server.pem",
+			TLSKeyPath:  "server.key",
+		},
 	}
 
 	var confBuf bytes.Buffer

@@ -24,6 +24,24 @@ type Config struct {
 
 	RegAddress string `toml:"registration_address,omitempty"`
 	Address    string `toml:"address"`
+
+	ServerAddress *ServerAddress `toml:"server-address,omitempty"`
+}
+
+// A ServerAddress describes a ConiksClient server connection.
+// The address must be specified explicitly.
+// Additionally, HTTP connections must use TLS for added security,
+// and each is required to specify a TLS certificate and corresponding
+// private key.
+type ServerAddress struct {
+	// Address is formatted as : https://address:port
+	Address string `toml:"address"`
+	// TLSCertPath is a path to the server's TLS Certificate,
+	// which has to be set if the connection is TCP.
+	TLSCertPath string `toml:"cert"`
+	// TLSKeyPath is a path to the server's TLS private key,
+	// which has to be set if the connection is TCP.
+	TLSKeyPath string `toml:"key"`
 }
 
 // LoadConfig returns a client's configuration read from the given filename.
@@ -47,6 +65,12 @@ func LoadConfig(file string) (*Config, error) {
 	}
 
 	conf.SigningPubKey = signPubKey
+
+	// also update path for TLS cert files
+	if conf.ServerAddress != nil {
+		conf.ServerAddress.TLSCertPath = utils.ResolvePath(conf.ServerAddress.TLSCertPath, file)
+		conf.ServerAddress.TLSKeyPath = utils.ResolvePath(conf.ServerAddress.TLSKeyPath, file)
+	}
 
 	return &conf, nil
 }

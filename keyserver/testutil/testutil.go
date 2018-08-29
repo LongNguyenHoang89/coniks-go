@@ -19,6 +19,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -63,6 +64,15 @@ type ExpectingDirProofsResponse struct {
 
 type ExpectingSTR struct {
 	Epoch uint64
+}
+
+type HTTPError struct {
+	Status string
+	Body   string
+}
+
+func (e HTTPError) Error() string {
+	return fmt.Sprintf("HTTP error code %v - %v", e.Status, e.Body)
 }
 
 // CreateTLSCert generates a new self-signed TLS certificate
@@ -180,15 +190,27 @@ func NewTCPClientDefault(msg []byte) ([]byte, error) {
 	return NewTCPClient(msg, PublicConnection)
 }
 
-// NewHTTPSClient creates a basic test client that sends a given
+// NewHTTPClient creates a basic test client that sends a given
 // request msg to the server listening at the given address
-// via an HTTPS connection.
-func NewHTTPSClient(msg []byte, address string) ([]byte, error) {
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+// via an HTTP(S) connection.
+func NewHTTPClient(msg []byte, address string, bearer string, https bool) ([]byte, error) {
+	client := &http.Client{}
+	if https {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		client = &http.Client{Transport: tr}
 	}
-	client := &http.Client{Transport: tr}
-	resp, err := client.Post(address, "application/json", bytes.NewBuffer(msg))
+
+	req, err := http.NewRequest("POST", address, bytes.NewBuffer(msg))
+	if err != nil {
+		panic(err)
+	}
+	req.Header.Add("Content-Type", "application/json")
+	if bearer != "" {
+		req.Header.Add("Authorization", bearer)
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		panic(err)
 	}
@@ -202,7 +224,7 @@ func NewHTTPSClient(msg []byte, address string) ([]byte, error) {
 // request msg to a server listening at the default PublicConnection
 // address.
 func NewHTTPSClientDefault(msg []byte) ([]byte, error) {
-	return NewHTTPSClient(msg, PublicHTTPSConnection)
+	return NewHTTPClient(msg, PublicHTTPSConnection, "", true)
 }
 
 // NewUnixClient creates a basic test client that sends a given
